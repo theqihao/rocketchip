@@ -108,6 +108,8 @@ object Constants
   val DW_64 = UFix(1, 1);
   val DW_XPR = UFix(1, 1);
 
+  // 1号寄存器， 通常用于函数返回值
+  // UFix(val, width)
   val RA = UFix(1, 5);
 
   val MT_X  = Bits("b000", 3);

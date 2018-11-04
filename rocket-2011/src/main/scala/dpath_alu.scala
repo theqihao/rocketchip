@@ -8,9 +8,9 @@ import Constants._
 import Instructions._
 
 class ioALU extends Bundle(){
-  val dw    = UFix(1, 'input);
-  val fn    = UFix(4, 'input);
-  val shamt = UFix(6, 'input);
+  val dw    = UFix(1, 'input); // 32 | 64
+  val fn    = UFix(4, 'input); // add | sub | ...
+  val shamt = UFix(6, 'input); // >> shamt
   val in2   = UFix(64, 'input);
   val in1   = UFix(64, 'input);
   val out   = UFix(64, 'output);
@@ -32,7 +32,7 @@ class rocketDpathALU extends Component
       (io.fn === FN_SR && io.dw === DW_64) -> (io.in1 >> io.shamt).toFix,
       (io.fn === FN_SR && io.dw === DW_32) -> (Cat(Fix(0, 32),io.in1(31, 0)).toUFix >> io.shamt),
       (io.fn === FN_SRA) ->                   (io.in1.toFix >>> io.shamt)));
-      
+  // 最终结果是64位，字长是CPU每次运算可以处理的数据长度32，数据字长64
   io.out := MuxLookup(io.dw, Fix(0, 64), Array(
               DW_64 -> out64,
               DW_32 -> Cat(Fill(32, out64(31)), out64(31,0)).toFix)).toUFix;

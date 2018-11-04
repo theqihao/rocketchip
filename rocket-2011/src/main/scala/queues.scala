@@ -32,6 +32,7 @@ class queueCtrl(entries: Int, addr_sz: Int) extends Component
     full <== Bool(false);
   }
 
+  // 读写
   io.waddr := enq_ptr;
   io.raddr := deq_ptr;
 

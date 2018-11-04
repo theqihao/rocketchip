@@ -13,7 +13,7 @@ class ioMem() extends Bundle
   val req_wdata = Bits(128, 'output);
   /*
     非阻塞的Dcache，每一个内存请求cpu会对每一个地址生成一个tag。
-    cpu可以发给DCache多个地址和以及对应的tag，DCache不一定按照对应的循序来回应cpu，
+    cpu可以发给DCache多个地址和以及对应的tag，DCache不一定按照对应的顺序来回应cpu，
     但是它返回给cpu值的时候要返回对应的tag来标识以前对应的地址
   */
   val req_tag = Bits(4, 'output);

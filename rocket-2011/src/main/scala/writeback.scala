@@ -24,10 +24,10 @@ class rocketWriteback extends Component
   val r_dmem_resp_tag  = Reg(io.dmem_resp_tag);
 
   val dmem_resp_xf    = r_dmem_resp_tag(11);
-  val dmem_resp_type  = r_dmem_resp_tag(10, 8);
-  val dmem_resp_pos   = r_dmem_resp_tag(7, 5);
+  val dmem_resp_type  = r_dmem_resp_tag(10, 8);  // 数据类型，有符号无符号等等
+  val dmem_resp_pos   = r_dmem_resp_tag(7, 5);  // 确定取的字节数
   val dmem_resp_waddr = r_dmem_resp_tag(4, 0);
-  val dmem_resp_xval  = r_dmem_resp_val & ~dmem_resp_xf;
+  val dmem_resp_xval  = r_dmem_resp_val & ~dmem_resp_xf; // 写使能
   val dmem_resp_fval  = r_dmem_resp_val &  dmem_resp_xf;
 
   val dmem_resp_data_w = 

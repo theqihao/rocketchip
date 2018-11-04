@@ -111,23 +111,26 @@ class rocketDpath extends Component
   // instruction fetch stage
   val if_pc_plus4 = if_reg_pc + UFix(4, 32);
 
+
   val ex_sign_extend = 
     Cat(Fill(52, ex_reg_inst(21)), ex_reg_inst(21,10));
   val ex_sign_extend_split = 
     Cat(Fill(52, ex_reg_inst(31)), ex_reg_inst(31,27), ex_reg_inst(16,10));
 
+  // 跳转地址计算
   val branch_adder_rhs =
     Mux(io.ctrl.sel_pc === PC_BR, Cat(ex_sign_extend_split(30,0), UFix(0, 1)),
         Cat(Fill(6, ex_reg_inst(31)), ex_reg_inst(31,7),          UFix(0, 1)));
 
   val ex_branch_target = ex_reg_pc + branch_adder_rhs.toUFix;
 
+  // btb 正确地址赋值
   btb.io.correct_target := ex_branch_target;
 
   val if_next_pc =
     Mux(io.ctrl.sel_pc === PC_4,   if_pc_plus4,
-    Mux(io.ctrl.sel_pc === PC_BTB, if_btb_target,
-    Mux(io.ctrl.sel_pc === PC_EX4, ex_reg_pc_plus4,
+    Mux(io.ctrl.sel_pc === PC_BTB, if_btb_target, // BTB预取
+    Mux(io.ctrl.sel_pc === PC_EX4, ex_reg_pc_plus4,  // 预测分支万一失败，保留pc+4的值
     Mux(io.ctrl.sel_pc === PC_BR,  ex_branch_target,
     Mux(io.ctrl.sel_pc === PC_J,   ex_branch_target,
     Mux(io.ctrl.sel_pc === PC_JR,  ex_jr_target.toUFix,
@@ -137,10 +140,11 @@ class rocketDpath extends Component
   when (!io.host.start){
     if_reg_pc <== UFix(0, 32); //32'hFFFF_FFFC;
   }  
+  // 如果取值不被停顿，取下一条指令，否则保留原来的值
   when (!io.ctrl.stallf) {
     if_reg_pc <== if_next_pc;
   }
-
+  // 取指令，如果取值不被停顿，取下一条指令，否则保留原来的值
   io.imem.req_addr :=
     Mux(io.ctrl.stallf, if_reg_pc,
         if_next_pc);
@@ -151,6 +155,7 @@ class rocketDpath extends Component
   btb.io.correct_pc4    := ex_reg_pc_plus4;
 
   // instruction decode stage
+  // 如果decode不被停顿，信号往decode阶段传递
   when (!io.ctrl.stalld) {
     id_reg_pc <== if_reg_pc;
     id_reg_pc_plus4 <== if_pc_plus4; 
@@ -158,6 +163,7 @@ class rocketDpath extends Component
       id_reg_inst <== NOP;
     }
     otherwise {
+      // 指令的来源
       id_reg_inst <== io.imem.resp_data;
     }
   }
@@ -184,7 +190,7 @@ class rocketDpath extends Component
   val id_rs1 =
   	Mux(io.ctrl.div_wb, div_result,
   	Mux(io.ctrl.mul_wb, mul_result,
-    Mux(id_raddr1 != UFix(0, 5) && ex_reg_ctrl_wen && id_raddr1 === ex_reg_waddr, ex_wdata,
+    Mux(id_raddr1 != UFix(0, 5) && ex_reg_ctrl_wen && id_raddr1 === ex_reg_waddr, ex_wdata,  // 转发，旁路
         id_rdata1)));
 
   val id_rs2 =
@@ -249,7 +255,7 @@ class rocketDpath extends Component
 
   val ex_alu_in1 =
     Mux(ex_reg_ctrl_sel_alu1 === A1_RS1, ex_reg_rs1,
-    Mux(ex_reg_ctrl_sel_alu1 === A1_LUI, Cat(Fill(32, ex_reg_inst(26)),ex_reg_inst(26,7),UFix(0, 12)),
+    Mux(ex_reg_ctrl_sel_alu1 === A1_LUI, Cat(Fill(32, ex_reg_inst(26)),ex_reg_inst(26,7),UFix(0, 12)), // 立即数
         UFix(0, 64)));
 
   val ex_alu_shamt =

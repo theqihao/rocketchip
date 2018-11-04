@@ -54,6 +54,8 @@ class ioCtrlDpath extends Bundle()
   val status  = Bits(8, 'input);
 }
 
+
+// TODO
 class ioCtrlMem extends Bundle()
 {
   val mrq_val  = Bool('output);
@@ -61,7 +63,7 @@ class ioCtrlMem extends Bundle()
   val mrq_type = UFix(3, 'output);
   val mrq_deq  = Bool('input);
   val xsdq_rdy = Bool('input);
-  val xsdq_val = Bool('output);
+  val xsdq_val = Bool('output);  // store指令write
   val dc_busy  = Bool('input);
 }
 
@@ -238,6 +240,7 @@ class rocketCtrl extends Component
   val sboard_wen = mem_xload_fire | div_fire | mul_fire;
   val sboard_waddr = id_waddr;
   
+  // 数据相关
   val sboard = new rocketCtrlSboard(); 
   sboard.io.raddra  := id_raddr2;
   sboard.io.raddrb  := id_raddr1;
@@ -254,9 +257,10 @@ class rocketCtrl extends Component
   val id_stall_waddr  = sboard.io.stallc;
   val id_stall_ra     = sboard.io.stallra;
 
+  // mem请求队列，最大为4个，3个bit位
   val mrq = new rocketCtrlCnt(3, 4);   
-  mrq.io.enq   := mem_fire.toBool;
-  mrq.io.deq   ^^ io.mem.mrq_deq;
+  mrq.io.enq   := mem_fire.toBool;  // 入队
+  mrq.io.deq   ^^ io.mem.mrq_deq;  // 队列请求队列出队一个
   val id_empty_mrq = mrq.io.empty;
   val id_full_mrq  = mrq.io.full; 
 
@@ -269,6 +273,9 @@ class rocketCtrl extends Component
   val ex_reg_eret       = Reg(resetVal = Bool(false));
   val ex_reg_privileged = Reg(resetVal = Bool(false));
 
+  /*
+    如果上一个周期stalld不为空，
+  */
   when (!io.ctrl.stalld) {
     when (io.ctrl.killf) {
       id_reg_btb_hit <== Bool(false);
@@ -277,6 +284,8 @@ class rocketCtrl extends Component
       id_reg_btb_hit <== io.dpath.btb_hit;
     }
   }
+  // 清空信号
+  // 上一个周期decode信号清空，这个周期exe的信号也要清空
   when (reset.toBool || io.ctrl.killd) {
     ex_reg_br_type    <== BR_N;
     ex_reg_btb_hit    <== Bool(false);
@@ -303,6 +312,7 @@ class rocketCtrl extends Component
   val bge  = ~io.dpath.br_lt;
   val bgeu = ~io.dpath.br_ltu;
 
+  // 有条件跳转指令
   val br_taken =
     (ex_reg_br_type === BR_EQ) & beq |
     (ex_reg_br_type === BR_NE) & bne |
@@ -310,10 +320,12 @@ class rocketCtrl extends Component
     (ex_reg_br_type === BR_LTU) & bltu |
     (ex_reg_br_type === BR_GE) & bge |
     (ex_reg_br_type === BR_GEU) & bgeu;
-
+  
+  // 无条件跳转指令
   val jr_taken = (ex_reg_br_type === BR_JR);
   val j_taken  = (ex_reg_br_type === BR_J);
 
+  // 指令的来源，host
   io.imem.req_val  := io.host.start;
 //  io.imem.req_val := Bool(true);
 
@@ -332,6 +344,7 @@ class rocketCtrl extends Component
     Mux(io.dpath.btb_hit,            PC_BTB,
         PC_4))))));
 
+  // 分之预测失败，要更新BTB表，分支预测只针对有条件跳转指令
   io.ctrl.wen_btb := ~ex_reg_btb_hit & br_taken;
 
   val take_pc =
@@ -343,6 +356,8 @@ class rocketCtrl extends Component
     ex_reg_privileged |
     ex_reg_eret; 
 
+  // if 停止
+  // 不是跳转 & （imem不是准备好的 | stalld）
   io.ctrl.stallf :=
     ~take_pc &
     (
@@ -351,6 +366,8 @@ class rocketCtrl extends Component
       io.ctrl.stalld
     );
 
+  // decode
+  // 不是跳转 & （数据依赖 | dmem是不是准备好 | 乘除法 | ...）
   val ctrl_stalld_wo_fpu_rdy =
     ~take_pc &
     (
@@ -371,11 +388,19 @@ class rocketCtrl extends Component
   val mul_wb = io.dpath.mul_result_val;
   val div_wb = io.dpath.div_result_val & !mul_wb;
 
+  // decode 流水线停顿
   io.ctrl.stalld := ctrl_stalld_wo_fpu_rdy.toBool;
 
+  // 跳转指令需要清空已经取值和译码的所有信号kill
   io.ctrl.killf := take_pc | ~io.imem.resp_val;
   val ctrl_killd_wo_fpu_rdy = take_pc | ctrl_stalld_wo_fpu_rdy;
   io.ctrl.killd    := ctrl_killd_wo_fpu_rdy.toBool;
+
+  // stallf和killf都代表什么？？？
+  /*
+    stall : 流水线停顿，数据依赖
+    kill  : 清空信号，跳转
+  */
 
   io.ctrl.ren2     := id_ren2.toBool;
   io.ctrl.ren1     := id_ren1.toBool;

@@ -21,6 +21,14 @@ class ioCtrlSboard extends Bundle()
   val stallra = Bool('output);
 }
 
+/*
+数据相关
+* 32个寄存器对应reg_busy的32个bit位,如果为1表示正在被用
+* 对于要用到的寄存器地址a,b,c，如果正在用，则stall置为1
+* set标识load-use冲突，将对应的地址置为1
+* clr将ex和wb要写回的寄存器地址位置0
+
+*/
 class rocketCtrlSboard extends Component
 {
   override val io = new ioCtrlSboard();
@@ -37,14 +45,18 @@ class rocketCtrlSboard extends Component
   io.stallra := reg_busy(RA).toBool;
 }
 
+/*
+io队列
+*/
 class ioCtrlCnt extends Bundle()
 {
-  val enq   = Bool('input);
-  val deq   = Bool('input);
+  val enq   = Bool('input);  // 进队列
+  val deq   = Bool('input);  // 出队列
   val empty = Bool('output);
   val full  = Bool('output);
 }
 
+// 请求队列
 class rocketCtrlCnt(n_bits: Int, limit: Int) extends Component
 {
   override val io = new ioCtrlCnt();

@@ -15,16 +15,21 @@ class ioDpathBTB extends Bundle()
   val correct_pc4    = UFix(32, 'input);
   val correct_target = UFix(32, 'input);
 }
-
+// BTB的输入是当前PC+4，判断是否存在
 class rocketDpathBTB extends Component
 {
   override val io = new ioDpathBTB();
+  // 当且仅当分支预测失败时，才会修改BTBMem的内容，所以wen表示的就是分支预测失败
+  // 是否有效
   val rst_lwlr_pf  = Mem(4, io.wen, io.correct_pc4(3, 2), UFix(1, 1), resetVal = UFix(0, 1)); 
+  // 当前地址和跳转地址
   val lwlr_pf      = Mem(4, io.wen, io.correct_pc4(3, 2), 
                          Cat(io.correct_pc4(31,4), io.correct_target(31,2)), resetVal = UFix(0, 1));
   val is_val       = rst_lwlr_pf(io.current_pc4(3, 2));
   val tag_target   = lwlr_pf(io.current_pc4(3, 2));
+  // 命中
   io.hit    := (is_val & (tag_target(57,30) === io.current_pc4(31, 4))).toBool;
+  // target，跳转地址
   io.target := Cat(tag_target(29, 0), Bits(0,2)).toUFix;
 }
 
@@ -42,6 +47,7 @@ class ioDpathPCR extends Bundle()
   val eret  		= Bool('input);
 }
 
+// TODO PCR : processor control register
 class rocketDpathPCR extends Component
 {
   override val io = new ioDpathPCR();
@@ -172,6 +178,10 @@ class ioRegfile extends Bundle()
   val w1 = new ioWritePort();
 }
 
+/*
+双端口RAM
+二个读、二个写
+*/
 class rocketDpathRegfile extends Component
 {
   override val io = new ioRegfile();
