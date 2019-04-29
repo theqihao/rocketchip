@@ -7,6 +7,10 @@ learn rocketchip
 * [cn](https://cnrv.io)
 * [org](https://riscv.org)
 
+# riscv tools
+
+* [RISC-V GNU 工具链：安装与使用](http://blog.evensgn.com/riscv-gnu-toolchain/)
+
 # github
 * [UC Berkeley](https://github.com/ucb-bar)
 * [riscv-tools](https://github.com/riscv/riscv-tools)
